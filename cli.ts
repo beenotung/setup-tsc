@@ -11,23 +11,89 @@ function main() {
     process.argv.slice(2),
     pkg,
   )
-  pkg.main ||= `${outDir}/cjs.js`
-  pkg.types ||= `${outDir}/${basename(entryFile).replace(/\.ts$/, '.d.ts')}`
-  pkg.module ||= `${outDir}/esm.js`
-  pkg.browser ||= `${outDir}/browser.js`
-  pkg.unpkg ||= pkg.browser
+
+  applyTemplate('package.json', pkg, {
+    main: `${outDir}/cjs.js`,
+    types: `${outDir}/${basename(entryFile).replace(/\.ts$/, '.d.ts')}`,
+    module: `${outDir}/esm.js`,
+    browser: `${outDir}/browser.js`,
+    unpkg: `${outDir}/browser.js`,
+  })
   pkg.files ||= []
   if (!pkg.files.includes(outDir)) {
     pkg.files.push(outDir)
   }
+
   pkg.scripts ||= {}
-  pkg.scripts.test ||= `ts-mocha ${testFile}`
-  pkg.scripts.coverage ||= 'nyc npm test'
-  pkg.scripts.build ||= 'run-s clean transpile'
-  pkg.scripts.clean ||= 'rimraf dist'
-  pkg.scripts.transpile ||= 'run-p esbuild tsc'
-  pkg.scripts.esbuild ||= 'node scripts/esbuild.js'
-  pkg.scripts.tsc ||= 'tsc -p tsconfig.esbuild.json'
+  applyTemplate('package.json scripts', pkg.scripts, {
+    test: `ts-mocha ${testFile}`,
+    coverage: 'nyc npm test',
+    build: 'run-s clean transpile',
+    clean: 'rimraf dist',
+    transpile: 'run-p esbuild tsc',
+    esbuild: 'node scripts/esbuild.js',
+    tsc: 'tsc -p tsconfig.esbuild.json',
+  })
+
+  pkg.devDependencies ||= {}
+  applyTemplate(
+    'package.json devDependencies',
+    pkg.devDependencies,
+    {
+      '@types/chai': '^4.3.5',
+      '@types/mocha': '^10.0.1',
+      '@types/node': '^20.6.2',
+      'chai': '^4.3.7',
+      'esbuild': '^0.19.3',
+      'esbuild-node-externals': '^1.9.0',
+      'mocha': '^10.2.0',
+      'npm-run-all': '^4.1.5',
+      'nyc': '^15.1.0',
+      'rimraf': '^5.0.1',
+      'ts-mocha': '^10.0.0',
+      'ts-node': '^10.9.1',
+      'ts-node-dev': '^2.0.0',
+      'typescript': '^5.2.2',
+    },
+    'casual',
+  )
+  pkg.devDependencies = sortObject(pkg.devDependencies)
+}
+
+function sortObject<T extends object>(object: T): T {
+  return Object.fromEntries(
+    Object.entries(object).sort((a, b) => compare(a[0], b[0])),
+  ) as T
+}
+
+function applyTemplate<T extends object>(
+  name: string,
+  target: T,
+  patch: T,
+  mode?: 'casual',
+) {
+  for (let key in Object.keys(patch)) {
+    if (!(key in target)) {
+      // @ts-ignore
+      target[key] = patch[key]
+      continue
+    }
+
+    // @ts-ignore
+    if (target[key] == patch[key]) {
+      continue
+    }
+
+    if (mode != 'casual') {
+      console.warn('Conflicting config:', { name, key })
+    }
+  }
+}
+
+function compare<T>(a: T, b: T): number {
+  if (a < b) return -1
+  if (a > b) return +1
+  return 0
 }
 
 function parseArgs(args: string[], pkg: pkg) {
@@ -125,6 +191,7 @@ type pkg = Partial<{
     esbuild: string
     tsc: string
   }>
+  devDependencies: Record<string, string>
 }>
 
 function getPackageName(pkg: pkg): string {
