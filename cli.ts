@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'child_process'
-import { readFileSync, writeFileSync } from 'fs'
-import { basename } from 'path'
+import { mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { basename, dirname } from 'path'
 import { cwd } from 'process'
 
 function main() {
@@ -12,6 +12,8 @@ function main() {
   setupPackageJSON(pkg, args)
   setupMainTsconfig()
   setupEsbuildTsconfig(args)
+  setupEsbuildJs(args)
+  setupBrowserFile(args)
 }
 
 function setupPackageJSON(pkg: pkg, args: args) {
@@ -117,6 +119,74 @@ function setupEsbuildTsconfig(args: args) {
   writeJSON('tsconfig.esbuild.json', tsconfig)
 }
 
+function setupEsbuildJs(args: args) {
+  let { entryFile, browserFile, outDir } = args
+
+  let code = `
+#!/usr/bin/env node
+
+let esbuild = require('esbuild')
+let { nodeExternalsPlugin } = require('esbuild-node-externals')
+
+Promise.all([
+  esbuild.build({
+    entryPoints: ['${entryFile}'],
+    outfile: '${outDir}/cjs.js',
+    bundle: true,
+    minify: false,
+    format: 'cjs',
+    platform: 'node',
+    sourcemap: false,
+    sourcesContent: false,
+    target: 'node12',
+    plugins: [nodeExternalsPlugin()],
+  }),
+  esbuild.build({
+    entryPoints: ['${entryFile}'],
+    outfile: '${outDir}/esm.js',
+    bundle: true,
+    minify: false,
+    format: 'esm',
+    platform: 'node',
+    sourcemap: false,
+    sourcesContent: false,
+    target: 'node14',
+    plugins: [nodeExternalsPlugin()],
+  }),
+  esbuild.build({
+    entryPoints: ['${browserFile}'],
+    outfile: '${outDir}/browser.js',
+    bundle: true,
+    minify: false,
+    format: 'iife',
+    platform: 'browser',
+    sourcemap: false,
+    sourcesContent: false,
+    target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
+    plugins: [nodeExternalsPlugin()],
+  }),
+]).catch(error => {
+  console.error(error)
+  process.exit(1)
+})
+`
+  mkdirSync('scripts', { recursive: true })
+  writeCode('scripts/esbuild.js', code)
+}
+
+function setupBrowserFile(args: args) {
+  let { globalName, entryFile, browserFile } = args
+  let importName = basename(entryFile).replace(/\.ts$/, '')
+  let code = `
+import * as ${globalName} from './${importName}'
+
+declare const window: any
+window.${globalName} = ${globalName}
+`
+  mkdirSync(dirname(browserFile), { recursive: true })
+  writeCode(browserFile, code)
+}
+
 function addToArray<T>(xs: T[], x: T) {
   if (xs.includes(x)) return
   xs.push(x)
@@ -209,7 +279,9 @@ function parseArgs(args: string[], pkg: pkg) {
     entryFile.replace(/\.ts$/, '.test.ts'),
   ])
 
-  return { globalName, entryFile, testFile, outDir }
+  let browserFile = entryFile.replace(basename(entryFile), 'browser.ts')
+
+  return { globalName, entryFile, browserFile, testFile, outDir }
 }
 
 type args = ReturnType<typeof parseArgs>
@@ -230,7 +302,11 @@ function detectFile(files: string[]): string {
 }
 
 function writeJSON(file: string, object: object) {
-  writeFileSync(file, JSON.stringify(object, null, 2) + '\n')
+  writeCode(file, JSON.stringify(object, null, 2))
+}
+
+function writeCode(file: string, code: string) {
+  writeFileSync(file, code.trim() + '\n')
 }
 
 function readJSON<T>(file: string): Partial<T> {
