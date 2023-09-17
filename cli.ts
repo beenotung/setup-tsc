@@ -215,7 +215,7 @@ function applyTemplate<T extends object>(
   patch: T,
   mode?: 'casual',
 ) {
-  for (let key in Object.keys(patch)) {
+  for (let key of Object.keys(patch)) {
     if (!(key in target)) {
       // @ts-ignore
       target[key] = patch[key]
