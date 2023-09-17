@@ -13,6 +13,7 @@ function main() {
   setupEsbuildTsconfig(args)
   setupEsbuildJs(args)
   setupBrowserFile(args)
+  setupEntryFile(args)
 }
 
 function setupPackageJSON(pkg: pkg, args: args) {
@@ -184,6 +185,17 @@ window.${globalName} = ${globalName}
 `
   mkdirSync(dirname(browserFile), { recursive: true })
   writeCode(browserFile, code)
+}
+
+function setupEntryFile(args: args) {
+  try {
+    readFileSync(args.entryFile)
+  } catch (error) {
+    let code = `
+export let name = '${args.globalName}'
+`
+    writeCode(args.entryFile, code)
+  }
 }
 
 function addToArray<T>(xs: T[], x: T) {
