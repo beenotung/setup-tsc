@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync } from 'child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { basename, dirname } from 'path'
 import { cwd } from 'process'
 
@@ -296,7 +295,7 @@ function parseArgValue(arg: string): string {
 
 function detectFile(files: string[]): string {
   for (let file of files) {
-    if (execFileSync(file)) return file
+    if (existsSync(file)) return file
   }
   return files[0]
 }
