@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'child_process'
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { basename } from 'path'
 import { cwd } from 'process'
 
 function main() {
-  let pkg = readPackageJSON()
-  let { globalName, entryFile, testFile, outDir } = parseArgs(
-    process.argv.slice(2),
-    pkg,
-  )
+  let pkg = readJSON<pkg>('package.json')
+  let args = parseArgs(process.argv.slice(2), pkg)
+
+  setupPackageJSON(pkg, args)
+  setupMainTsconfig()
+  setupEsbuildTsconfig(args)
+}
+
+function setupPackageJSON(pkg: pkg, args: args) {
+  let { outDir, entryFile, testFile } = args
 
   applyTemplate('package.json', pkg, {
     main: `${outDir}/cjs.js`,
@@ -20,9 +25,7 @@ function main() {
     unpkg: `${outDir}/browser.js`,
   })
   pkg.files ||= []
-  if (!pkg.files.includes(outDir)) {
-    pkg.files.push(outDir)
-  }
+  addToArray(pkg.files, outDir)
 
   pkg.scripts ||= {}
   applyTemplate('package.json scripts', pkg.scripts, {
@@ -58,6 +61,65 @@ function main() {
     'casual',
   )
   pkg.devDependencies = sortObject(pkg.devDependencies)
+
+  writeJSON('package.json', pkg)
+}
+
+function setupMainTsconfig() {
+  let tsconfig = readJSON<tsconfig>('tsconfig.json')
+
+  tsconfig.compilerOptions ||= {}
+  applyTemplate(
+    'tsconfig.json compilerOptions',
+    tsconfig.compilerOptions,
+    {
+      target: 'es2022',
+      module: 'commonjs',
+      esModuleInterop: true,
+      forceConsistentCasingInFileNames: true,
+      strict: true,
+      skipLibCheck: true,
+      incremental: true,
+      outDir: 'dist',
+    },
+    'casual',
+  )
+
+  tsconfig.exclude ||= []
+  addToArray(tsconfig.exclude, 'dist')
+
+  writeJSON('tsconfig.json', tsconfig)
+}
+
+function setupEsbuildTsconfig(args: args) {
+  let tsconfig = readJSON<tsconfig>('tsconfig.esbuild.json')
+
+  tsconfig.compilerOptions ||= {}
+  applyTemplate(
+    'tsconfig.esbuild.json compilerOptions',
+    tsconfig.compilerOptions,
+    {
+      target: 'es2018',
+      strict: true,
+      noImplicitAny: true,
+      moduleResolution: 'node',
+      emitDeclarationOnly: true,
+      declaration: true,
+      skipLibCheck: true,
+      outDir: 'dist',
+    },
+    'casual',
+  )
+
+  tsconfig.files ||= []
+  addToArray(tsconfig.files, args.entryFile)
+
+  writeJSON('tsconfig.esbuild.json', tsconfig)
+}
+
+function addToArray<T>(xs: T[], x: T) {
+  if (xs.includes(x)) return
+  xs.push(x)
 }
 
 function sortObject<T extends object>(object: T): T {
@@ -150,6 +212,8 @@ function parseArgs(args: string[], pkg: pkg) {
   return { globalName, entryFile, testFile, outDir }
 }
 
+type args = ReturnType<typeof parseArgs>
+
 function parseArgValue(arg: string): string {
   let value = arg.split('=')[1]
   if (value) return value
@@ -165,9 +229,13 @@ function detectFile(files: string[]): string {
   return files[0]
 }
 
-function readPackageJSON(): pkg {
+function writeJSON(file: string, object: object) {
+  writeFileSync(file, JSON.stringify(object, null, 2) + '\n')
+}
+
+function readJSON<T>(file: string): Partial<T> {
   try {
-    return JSON.parse(readFileSync('package.json').toString())
+    return JSON.parse(readFileSync(file).toString())
   } catch (error) {
     // file not found or invalid json
     return {}
@@ -197,6 +265,12 @@ type pkg = Partial<{
 function getPackageName(pkg: pkg): string {
   return pkg.name || basename(cwd())
 }
+
+type tsconfig = Partial<{
+  compilerOptions: Record<string, any>
+  files: string[]
+  exclude: string[]
+}>
 
 function capitalize(name: string): string {
   return name
