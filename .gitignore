@@ -1,5 +1,5 @@
 node_modules/
-dist/
+cli.js
 *-lock.json
 *-lock.yaml
 *.lock

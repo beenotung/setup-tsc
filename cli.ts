@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { basename, dirname } from 'path'
 import { cwd } from 'process'
