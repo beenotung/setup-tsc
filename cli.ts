@@ -19,6 +19,7 @@ function setupPackageJSON(pkg: pkg, args: args) {
   let { outDir, entryFile, testFile } = args
 
   applyTemplate('package.json', pkg, {
+    type: 'module',
     main: `${outDir}/cjs.js`,
     types: `${outDir}/${basename(entryFile).replace(/\.ts$/, '.d.ts')}`,
     module: `${outDir}/esm.js`,
@@ -124,50 +125,62 @@ function setupEsbuildJs(args: args) {
   let code = `
 #!/usr/bin/env node
 
-let esbuild = require('esbuild')
-let { nodeExternalsPlugin } = require('esbuild-node-externals')
+if (typeof require == 'function') {
+  let esbuild = require('esbuild')
+  let { nodeExternalsPlugin } = require('esbuild-node-externals')
+  main(esbuild, nodeExternalsPlugin)
+} else {
+  Promise.all([
+    import('esbuild'),
+    import('esbuild-node-externals'),
+  ]).then(
+    ([esbuild, { nodeExternalsPlugin }]) => main(esbuild, nodeExternalsPlugin),
+  )
+}
 
-Promise.all([
-  esbuild.build({
-    entryPoints: ['${entryFile}'],
-    outfile: '${outDir}/cjs.js',
-    bundle: true,
-    minify: false,
-    format: 'cjs',
-    platform: 'node',
-    sourcemap: false,
-    sourcesContent: false,
-    target: 'node12',
-    plugins: [nodeExternalsPlugin()],
-  }),
-  esbuild.build({
-    entryPoints: ['${entryFile}'],
-    outfile: '${outDir}/esm.js',
-    bundle: true,
-    minify: false,
-    format: 'esm',
-    platform: 'node',
-    sourcemap: false,
-    sourcesContent: false,
-    target: 'node14',
-    plugins: [nodeExternalsPlugin()],
-  }),
-  esbuild.build({
-    entryPoints: ['${browserFile}'],
-    outfile: '${outDir}/browser.js',
-    bundle: true,
-    minify: false,
-    format: 'iife',
-    platform: 'browser',
-    sourcemap: false,
-    sourcesContent: false,
-    target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
-    plugins: [],
-  }),
-]).catch(error => {
-  console.error(error)
-  process.exit(1)
-})
+function main(esbuild, nodeExternalsPlugin) {
+  Promise.all([
+    esbuild.build({
+      entryPoints: ['${entryFile}'],
+      outfile: '${outDir}/cjs.js',
+      bundle: true,
+      minify: false,
+      format: 'cjs',
+      platform: 'node',
+      sourcemap: false,
+      sourcesContent: false,
+      target: 'node12',
+      plugins: [nodeExternalsPlugin()],
+    }),
+    esbuild.build({
+      entryPoints: ['${entryFile}'],
+      outfile: '${outDir}/esm.js',
+      bundle: true,
+      minify: false,
+      format: 'esm',
+      platform: 'node',
+      sourcemap: false,
+      sourcesContent: false,
+      target: 'node14',
+      plugins: [nodeExternalsPlugin()],
+    }),
+    esbuild.build({
+      entryPoints: ['${browserFile}'],
+      outfile: '${outDir}/browser.js',
+      bundle: true,
+      minify: false,
+      format: 'iife',
+      platform: 'browser',
+      sourcemap: false,
+      sourcesContent: false,
+      target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
+      plugins: [],
+    }),
+  ]).catch(error => {
+    console.error(error)
+    process.exit(1)
+  })
+}
 `
   mkdirSync('scripts', { recursive: true })
   writeCode('scripts/esbuild.js', code)
@@ -392,6 +405,7 @@ function readJSON<T>(file: string): Partial<T> {
 }
 
 type pkg = Partial<{
+  type: string
   name: string
   main: string
   types: string
