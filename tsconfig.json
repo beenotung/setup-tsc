@@ -9,6 +9,6 @@
     "incremental": false
   },
   "exclude": [
-    "dist"
+    "examples"
   ]
 }

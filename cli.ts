@@ -350,7 +350,7 @@ function parseArgValue(arg: string): string {
 
 function helpMessage(): string {
   return `
-Usage: tsc-all [options]
+Usage: setup-tsc [options]
 
 Optional Options:
   --entryFile=<path>          Specify the entry .ts file.
@@ -377,9 +377,9 @@ Options Details:
     For instance, '--globalName=@my-scope/my-package' results in a global name of 'myPackage'.
 
 Examples:
-  $ tsc-all --entryFile=./src/core.ts --globalName=oklab
-  $ tsc-all --outDir=./build
-  $ npx tsc-all
+  $ setup-tsc --entryFile=./src/core.ts --globalName=oklab
+  $ setup-tsc --outDir=./build
+  $ npx setup-tsc
 `
 }
 

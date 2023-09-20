@@ -7,3 +7,4 @@ cli.js
 *.tsbuildinfo
 .env
 *.tgz
+.DS_Store

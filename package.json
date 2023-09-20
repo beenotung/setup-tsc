@@ -1,15 +1,50 @@
 {
   "name": "setup-tsc",
   "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CLI tool to setup TypeScript projects for npm and browser distribution",
+  "keywords": [
+    "typescript",
+    "tsc",
+    "transpile",
+    "cli",
+    "browser",
+    "javascript",
+    "build",
+    "module",
+    "package",
+    "npm",
+    "node",
+    "es6",
+    "commonjs",
+    "umd",
+    "iife",
+    "setup",
+    "starter"
+  ],
+  "author": {
+    "name": "Beeno Tung",
+    "email": "aabbcc1241@yahoo.com.hk",
+    "url": "https://beeno-tung.surge.sh"
+  },
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beenotung/setup-tsc.git"
+  },
+  "homepage": "https://github.com/beenotung/setup-tsc#readme",
+  "bugs": {
+    "url": "https://github.com/beenotung/setup-tsc/issues"
+  },
+  "bin": {
+    "setup-tsc": "cli.js"
+  },
+  "files": [
+    "cli.js"
+  ],
   "scripts": {
     "test": "tsc --noEmit",
     "build": "tsc -p . && bash set-cli.sh"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.6.2",
     "ts-node": "^10.9.1",
