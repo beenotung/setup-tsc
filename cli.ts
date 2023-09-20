@@ -260,6 +260,10 @@ function parseArgs(args: string[], pkg: pkg) {
       outDir = parseArgValue(arg)
       continue
     }
+    if (arg == '-h' || arg == '--help') {
+      console.log(helpMessage())
+      process.exit(0)
+    }
     console.error('Unknown argument: ' + JSON.stringify(arg))
     process.exit(1)
   }
@@ -272,7 +276,7 @@ function parseArgs(args: string[], pkg: pkg) {
     globalName = globalName.split('/').pop()!
   }
 
-  globalName = capitalize(globalName)
+  globalName = camelCase(globalName)
 
   entryFile ||= detectFile([
     'index.ts',
@@ -301,6 +305,38 @@ function parseArgValue(arg: string): string {
   console.error('Missing argument value for: ' + JSON.stringify(arg))
   console.error('Example: ' + arg.replace('=', '') + '=value')
   process.exit(1)
+}
+
+function helpMessage(): string {
+  return `
+Usage: tsc-all [options]
+
+Options:
+  --entryFile=<path>      Specify the entry file path. If not provided, the CLI will
+                          attempt to detect the entry file using these names in order:
+                          'index.ts', '<packageName>.ts', '<packageName>',
+                          'src/index.ts', 'src/<packageName>.ts', 'src/<packageName>'.
+                          The <packageName> is also considered in case the package name has '.ts' suffix.
+
+  --name|--global|--globalName=<string>
+                          Specify the global name. If not provided or if it starts
+                          with '@', the name will be derived from the package name
+                          and capitalized
+
+  --outDir=<path>         Specify the output directory. Default is 'dist'
+
+  -h, --help              Output usage information
+
+Examples:
+  $ tsc-all --entryFile=./src/core.ts --globalName=oklab
+  $ tsc-all --outDir=./build
+  $ npx tsc-all
+
+Note:
+If you provide a global name that starts with '@', the CLI will use the part
+after the '/' and convert into camelCase. For example, '--global @my-scope/my-package'
+will result in a global name of 'myPackage'.
+`
 }
 
 function detectFile(files: string[]): string {
@@ -357,7 +393,7 @@ type tsconfig = Partial<{
   exclude: string[]
 }>
 
-function capitalize(name: string): string {
+function camelCase(name: string): string {
   return name
     .split('-')
     .map((s, i) => (i == 0 ? s : s.slice(0, 1).toUpperCase() + s.slice(1)))
