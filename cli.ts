@@ -354,7 +354,9 @@ Usage: tsc-all [options]
 
 Options:
   --entryFile=<path>      Specify the entry file path. If not provided, the CLI will
-                          attempt to detect the entry file using these names in order:
+                          attempt to detect the entry file using these names in order,
+                          with '<packageName>' being the name of the package or the
+                          name of the current working directory:
                           'index.ts', '<packageName>.ts', '<packageName>',
                           'src/index.ts', 'src/<packageName>.ts', 'src/<packageName>'.
                           The <packageName> is also considered in case the package name has '.ts' suffix.
