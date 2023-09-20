@@ -12,6 +12,7 @@ function main() {
   setupEsbuildJs(args)
   setupBrowserFile(args)
   setupEntryFile(args)
+  setupGitIgnore(args)
 }
 
 function setupPackageJSON(pkg: pkg, args: args) {
@@ -193,6 +194,33 @@ function setupEntryFile(args: args) {
 export let name = '${args.globalName}'
 `
     writeCode(args.entryFile, code)
+  }
+}
+
+function setupGitIgnore(args: args) {
+  let { outDir } = args
+  let outDir_ = outDir + '/'
+  let file = '.gitignore'
+  let text: string
+  try {
+    text = readFileSync(file).toString()
+  } catch (error) {
+    // file not found
+    text = ''
+  }
+  const originalText = text
+  let match = text.split('\n').find(line => {
+    line = line.trim().replace(/#.*/, '').trim()
+    return line == outDir || line == outDir_
+  })
+  if (!match) {
+    if (text.trim() && !text.endsWith('\n')) text += '\n'
+    text += outDir
+  }
+  text = text.split('\r').join('')
+  if (!text.endsWith('\n')) text += '\n'
+  if (text != originalText) {
+    writeFileSync(file, text)
   }
 }
 
