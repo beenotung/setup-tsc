@@ -352,33 +352,34 @@ function helpMessage(): string {
   return `
 Usage: tsc-all [options]
 
-Options:
-  --entryFile=<path>      Specify the entry file path. If not provided, the CLI will
-                          attempt to detect the entry file using these names in order,
-                          with '<packageName>' being the name of the package or the
-                          name of the current working directory:
-                          'index.ts', '<packageName>.ts', '<packageName>',
-                          'src/index.ts', 'src/<packageName>.ts', 'src/<packageName>'.
-                          The <packageName> is also considered in case the package name has '.ts' suffix.
-
+Optional Options:
+  --entryFile=<path>          Specify the entry .ts file.
+                              If not specified, it's automatically inferred (see details below).
   --name|--global|--globalName=<string>
-                          Specify the global name. If not provided or if it starts
-                          with '@', the name will be derived from the package name
-                          and capitalized
+                              Specify the global name for the browser .js file.
+                              If not specified, it's derived from the package name or directory name.
+  --outDir=<path>             Specify the output directory for build output.
+                              Default is 'dist'.
+  -h, --help                  Display usage information.
 
-  --outDir=<path>         Specify the output directory. Default is 'dist'
+Options Details:
 
-  -h, --help              Output usage information
+  --entryFile:
+    If this option is not specified, the entry file is inferred from a list of potential names.
+    Here, '<packageName>' is either the package name or the current working directory's name.
+    Possible names include 'index.ts', '<packageName>.ts', <packageName>,
+    'src/index.ts', 'src/<packageName>.ts', and 'src/<packageName>'.
+    Note: If the package name ends with '.ts', '<packageName>' is also a valid entry file name.
+
+  --globalName:
+    If the global name begins with '@', the name is derived from the part after the '/' in the package name,
+    and it is converted into camelCase.
+    For instance, '--globalName=@my-scope/my-package' results in a global name of 'myPackage'.
 
 Examples:
   $ tsc-all --entryFile=./src/core.ts --globalName=oklab
   $ tsc-all --outDir=./build
   $ npx tsc-all
-
-Note:
-If you provide a global name that starts with '@', the CLI will use the part
-after the '/' and convert into camelCase. For example, '--global @my-scope/my-package'
-will result in a global name of 'myPackage'.
 `
 }
 
