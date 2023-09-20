@@ -162,7 +162,7 @@ Promise.all([
     sourcemap: false,
     sourcesContent: false,
     target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
-    plugins: [nodeExternalsPlugin()],
+    plugins: [],
   }),
 ]).catch(error => {
   console.error(error)
