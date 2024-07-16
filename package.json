@@ -1,6 +1,6 @@
 {
   "name": "setup-tsc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI tool to setup TypeScript projects for npm and browser distribution",
   "keywords": [
     "typescript",
