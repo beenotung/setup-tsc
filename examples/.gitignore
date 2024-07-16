@@ -1,1 +1,7 @@
 dist
+node_modules
+*.tgz
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.nyc_output

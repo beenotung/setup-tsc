@@ -8,8 +8,6 @@ function main() {
 
   setupPackageJSON(pkg, args)
   setupMainTsconfig()
-  setupEsbuildTsconfig(args)
-  setupEsbuildJs(args)
   setupBrowserFile(args)
   setupEntryFile(args)
   setupGitIgnore(args)
@@ -20,7 +18,7 @@ function setupPackageJSON(pkg: pkg, args: args) {
 
   applyTemplate('package.json', pkg, {
     type: 'module',
-    main: `${outDir}/cjs.js`,
+    main: `${outDir}/${basename(entryFile).replace(/\.ts$/, '.js')}`,
     types: `${outDir}/${basename(entryFile).replace(/\.ts$/, '.d.ts')}`,
     module: `${outDir}/esm.js`,
     browser: `${outDir}/browser.js`,
@@ -31,13 +29,14 @@ function setupPackageJSON(pkg: pkg, args: args) {
 
   pkg.scripts ||= {}
   applyTemplate('package.json scripts', pkg.scripts, {
-    test: `ts-mocha ${testFile}`,
-    coverage: 'nyc npm test',
-    build: 'run-s clean transpile',
-    clean: 'rimraf dist',
-    transpile: 'run-p esbuild tsc',
-    esbuild: 'node scripts/esbuild.js',
-    tsc: 'tsc -p tsconfig.esbuild.json',
+    'test': `ts-mocha ${testFile}`,
+    'coverage': 'nyc npm test',
+    'build': 'run-s clean transpile',
+    'clean': 'rimraf dist',
+    'transpile': 'run-p esbuild:* tsc',
+    'esbuild:browser': 'esbuild --bundle --outfile=dist/browser.js browser.ts',
+    'esbuild:esm': `esbuild --bundle --outfile=dist/esm.js --platform=node --format=esm ${entryFile}`,
+    'tsc': 'tsc -p .',
   })
 
   pkg.devDependencies ||= {}
@@ -45,20 +44,19 @@ function setupPackageJSON(pkg: pkg, args: args) {
     'package.json devDependencies',
     pkg.devDependencies,
     {
-      '@types/chai': '^4.3.5',
-      '@types/mocha': '^10.0.1',
-      '@types/node': '^20.6.2',
-      'chai': '^4.3.7',
-      'esbuild': '^0.19.3',
-      'esbuild-node-externals': '^1.9.0',
-      'mocha': '^10.2.0',
+      '@types/chai': '^4.3.16',
+      '@types/mocha': '^10.0.7',
+      '@types/node': '^20.14.11',
+      'chai': '^4.4.1',
+      'esbuild': '^0.23.0',
+      'mocha': '^10.6.0',
       'npm-run-all': '^4.1.5',
-      'nyc': '^15.1.0',
-      'rimraf': '^5.0.1',
+      'nyc': '^17.0.0',
+      'rimraf': '^6.0.1',
       'ts-mocha': '^10.0.0',
-      'ts-node': '^10.9.1',
+      'ts-node': '^10.9.2',
       'ts-node-dev': '^2.0.0',
-      'typescript': '^5.2.2',
+      'typescript': '^5.5.3',
     },
     'casual',
   )
@@ -78,10 +76,11 @@ function setupMainTsconfig() {
       target: 'es2022',
       module: 'commonjs',
       esModuleInterop: true,
+      declaration: true,
       forceConsistentCasingInFileNames: true,
       strict: true,
       skipLibCheck: true,
-      incremental: true,
+      incremental: false,
       outDir: 'dist',
     },
     'casual',
@@ -90,100 +89,10 @@ function setupMainTsconfig() {
   tsconfig.exclude ||= []
   addToArray(tsconfig.exclude, 'dist')
 
-  writeJSON('tsconfig.json', tsconfig)
-}
-
-function setupEsbuildTsconfig(args: args) {
-  let tsconfig = readJSON<tsconfig>('tsconfig.esbuild.json')
-
-  tsconfig.compilerOptions ||= {}
-  applyTemplate(
-    'tsconfig.esbuild.json compilerOptions',
-    tsconfig.compilerOptions,
-    {
-      target: 'es2018',
-      strict: true,
-      noImplicitAny: true,
-      moduleResolution: 'node',
-      emitDeclarationOnly: true,
-      declaration: true,
-      skipLibCheck: true,
-      outDir: 'dist',
-    },
-    'casual',
-  )
-
   tsconfig.files ||= []
-  addToArray(tsconfig.files, args.entryFile)
+  addToArray(tsconfig.files, 'index.ts')
 
-  writeJSON('tsconfig.esbuild.json', tsconfig)
-}
-
-function setupEsbuildJs(args: args) {
-  let { entryFile, browserFile, outDir } = args
-
-  let code = `
-#!/usr/bin/env node
-
-if (typeof require == 'function') {
-  let esbuild = require('esbuild')
-  let { nodeExternalsPlugin } = require('esbuild-node-externals')
-  main(esbuild, nodeExternalsPlugin)
-} else {
-  Promise.all([
-    import('esbuild'),
-    import('esbuild-node-externals'),
-  ]).then(
-    ([esbuild, { nodeExternalsPlugin }]) => main(esbuild, nodeExternalsPlugin),
-  )
-}
-
-function main(esbuild, nodeExternalsPlugin) {
-  Promise.all([
-    esbuild.build({
-      entryPoints: ['${entryFile}'],
-      outfile: '${outDir}/cjs.js',
-      bundle: true,
-      minify: false,
-      format: 'cjs',
-      platform: 'node',
-      sourcemap: false,
-      sourcesContent: false,
-      target: 'node12',
-      plugins: [nodeExternalsPlugin()],
-    }),
-    esbuild.build({
-      entryPoints: ['${entryFile}'],
-      outfile: '${outDir}/esm.js',
-      bundle: true,
-      minify: false,
-      format: 'esm',
-      platform: 'node',
-      sourcemap: false,
-      sourcesContent: false,
-      target: 'node14',
-      plugins: [nodeExternalsPlugin()],
-    }),
-    esbuild.build({
-      entryPoints: ['${browserFile}'],
-      outfile: '${outDir}/browser.js',
-      bundle: true,
-      minify: false,
-      format: 'iife',
-      platform: 'browser',
-      sourcemap: false,
-      sourcesContent: false,
-      target: ['chrome58', 'firefox57', 'safari11', 'edge16'],
-      plugins: [],
-    }),
-  ]).catch(error => {
-    console.error(error)
-    process.exit(1)
-  })
-}
-`
-  mkdirSync('scripts', { recursive: true })
-  writeCode('scripts/esbuild.js', code)
+  writeJSON('tsconfig.json', tsconfig)
 }
 
 function setupBrowserFile(args: args) {
@@ -211,8 +120,6 @@ export let name = '${args.globalName}'
 }
 
 function setupGitIgnore(args: args) {
-  let { outDir } = args
-  let outDir_ = outDir + '/'
   let file = '.gitignore'
   let text: string
   try {
@@ -222,14 +129,25 @@ function setupGitIgnore(args: args) {
     text = ''
   }
   const originalText = text
-  let match = text.split('\n').find(line => {
-    line = line.trim().replace(/#.*/, '').trim()
-    return line == outDir || line == outDir_
-  })
-  if (!match) {
+
+  function addLine(pattern: string) {
+    let match = text.split('\n').find(line => {
+      line = line.trim().replace(/#.*/, '').trim()
+      return line == pattern || line == pattern + '/'
+    })
+    if (match) return
     if (text.trim() && !text.endsWith('\n')) text += '\n'
-    text += outDir
+    text += pattern
   }
+
+  addLine(args.outDir)
+  addLine('node_modules')
+  addLine('.nyc_output')
+  addLine('*.tgz')
+  addLine('package-lock.json')
+  addLine('pnpm-lock.yaml')
+  addLine('yarn.lock')
+
   text = text.split('\r').join('')
   if (!text.endsWith('\n')) text += '\n'
   if (text != originalText) {
@@ -316,6 +234,10 @@ function parseArgs(args: string[], pkg: pkg) {
   if (globalName.startsWith('@')) {
     globalName = globalName.split('/').pop()!
   }
+  if (globalName.endsWith('.js') || globalName.endsWith('.ts')) {
+    globalName = globalName.slice(0, globalName.length - 3)
+  }
+  globalName = globalName.replaceAll('.', '-')
 
   globalName = camelCase(globalName)
 
@@ -417,13 +339,14 @@ type pkg = Partial<{
   unpkg: string
   files: string[]
   scripts: Partial<{
-    test: string
-    coverage: string
-    build: string
-    clean: string
-    transpile: string
-    esbuild: string
-    tsc: string
+    'test': string
+    'coverage': string
+    'build': string
+    'clean': string
+    'transpile': string
+    'esbuild:browser': string
+    'esbuild:esm': string
+    'tsc': string
   }>
   devDependencies: Record<string, string>
 }>
